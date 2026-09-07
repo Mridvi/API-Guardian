@@ -134,9 +134,6 @@ The dashboard displays:
 - **API Status**
 - **Rate-Limit Information**
 
-### Dashboard Preview
-
-![API Guardian Dashboard](src/dashboard.png)
 
 ### Access the Dashboard
 
