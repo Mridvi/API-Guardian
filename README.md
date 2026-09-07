@@ -1,4 +1,4 @@
-# API Guardian 🛡️
+# API Guardian 
 
 Modern applications often expose APIs that handle requests from users, services, and third-party clients. Without proper protection, a client can send too many requests in a short period of time, leading to **API abuse, excessive resource consumption, service degradation, and potential denial-of-service situations**.
 
