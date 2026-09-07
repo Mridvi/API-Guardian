@@ -1,101 +1,249 @@
-# FastAPI Rate Limiter Example
+# API Guardian 🛡️
 
-This project demonstrates the implementation of rate limiting in a FastAPI application using the token bucket algorithm and Redis for state management. The implementation provides practical insights into protecting API endpoints from excessive usage through a proven rate limiting approach.
+Modern applications often expose APIs that handle requests from users, services, and third-party clients. Without proper protection, a client can send too many requests in a short period of time, leading to **API abuse, excessive resource consumption, service degradation, and potential denial-of-service situations**.
 
-For a detailed explanation of the implementation and concepts, please read the accompanying blog post: [Rate Limiting Basics with FastAPI and Redis](bryananthonio.com/blog/rate-limiting-basics).
+**API Guardian** is a lightweight API protection system built with **FastAPI and Redis** that addresses this problem by controlling request traffic before it reaches the application.
 
-## Overview
+It combines **API-key authentication** with **Redis-based rate limiting** using the **Token Bucket algorithm** to ensure that clients stay within defined request limits.
 
-The application exposes a simple API endpoint (`/api/example`) that is protected by rate limiting. It uses Redis as a key-value store to track client usage and implements the token bucket algorithm for rate limiting decisions.
+The system also provides **rate-limit response headers** so clients can understand their current request limits and retry timing. A web-based **monitoring dashboard** provides visibility into request activity, successful requests, and rate-limited requests.
 
-## Rate Limiting Configuration
+This project demonstrates practical backend concepts including **API security, middleware, rate limiting, Redis, asynchronous APIs, monitoring, and Dockerized application development**.
 
-The system implements a token bucket algorithm with the following parameters found in [`src/main.py`](src/main.py):
+---
 
-```python
-# Number of tokens to add to the bucket per second
-BUCKET_REPLENISH_RATE = 2
+## 🚀 Features
 
-# Max number of tokens the bucket can carry
-BUCKET_CAPACITY = 10
+- ⚡ **Redis-based Rate Limiting** using the **Token Bucket algorithm**
+- 🔑 **API-Key Authentication** for protected endpoints
+- 📊 **Monitoring Dashboard** for request statistics
+- 📈 **Recent Request Activity** tracking
+- 🚫 **429 Too Many Requests** handling
+- ⏱️ **Rate Limit Response Headers**
+- 🐳 **Dockerized** FastAPI and Redis environment
 
-# Number of tokens needed to make a request
-TOKENS_PER_REQUEST = 1
+---
+
+## 🛠️ Tech Stack
+
+- **Python**
+- **FastAPI**
+- **Redis**
+- **Docker**
+- **Lua**
+- **HTML**
+- **CSS**
+- **JavaScript**
+
+---
+
+## ⚙️ How It Works
+
+API requests pass through a **rate-limiting middleware** before reaching the API endpoint.
+
+The system uses the **Token Bucket algorithm** to control the number of requests a client can make.
+
+```text
+Client Request
+      │
+      ▼
+API Key Authentication
+      │
+      ▼
+Rate Limiting Middleware
+      │
+      ▼
+    Redis
+      │
+   ┌──┴───┐
+   ▼      ▼
+Allowed  Blocked
+   │      │
+   ▼      ▼
+  200    429
 ```
 
-This configuration allows for brief bursts of up to 10 requests while maintaining a steady-state rate of 2 requests per second.
+Redis stores the **token count** and **timestamp** for each client. Tokens are automatically replenished based on the configured **refill rate**.
 
-## Prerequisites
+---
 
-- Python 3.12 or higher
-- Docker and Docker Compose
-- uv package manager
-- bash (for running the test script)
+## 🔐 API Authentication
 
-## Project Structure
+Protected endpoints require an **API key** to be sent through the request header.
 
-```
-├── docker-compose.yml    # Docker Compose configuration
-├── Dockerfile           # FastAPI service container configuration
-├── src/                 # Source code directory
-│   ├── main.py         # FastAPI application code
-│   └── request_rate_limiter.lua  # Redis Lua script for rate limiting
-├── pyproject.toml       # Project dependencies and configuration
-├── test_rate_limit.sh   # Test script
-└── README.md           # This file
+### API Key
+
+```text
+X-API-Key: demo-key-123
 ```
 
-## Quick Start
-
-1. Clone this repository:
-   ```bash
-   git clone git@github.com:photon-collider/rate-limiter-example.git
-   cd rate-limiter-example
-   ```
-
-2. Start the application using Docker Compose:
-   ```bash
-   docker compose up
-   ```
-
-   This will start both the FastAPI application and Redis server. The service automatically configures the Redis connection using the following environment variables:
-   - `REDIS_HOST=redis`
-   - `REDIS_PORT=6379`
-
-3. The API will be available at `http://localhost:8000`
-
-## Testing the Rate Limiter
-
-This project includes a test script that demonstrates the rate limiter in action. To run the test:
+### Example Request
 
 ```bash
-./test_rate_limit.sh
+curl -H "X-API-Key: demo-key-123" http://localhost:8000/api/example
 ```
 
-The script sends 20 consecutive requests to the API endpoint. You'll observe the rate limiter's behavior as requests begin to receive rejection responses (HTTP 429 status code) once they exceed the allowed rate.
+If an invalid API key is provided, the API returns:
 
-Example output:
+```text
+401 Unauthorized
+```
+
+---
+
+## 🚦 Rate Limiting
+
+The default rate-limiting configuration is:
+
+| **Configuration** | **Value** |
+|---|---:|
+| **Bucket Capacity** | **10 requests** |
+| **Refill Rate** | **2 tokens/second** |
+| **Tokens Per Request** | **1** |
+
+When the rate limit is exceeded, the API returns:
+
+```text
+429 Too Many Requests
+```
+
+### Rate Limit Headers
+
+The API provides the following response headers:
+
+```text
+X-RateLimit-Limit
+X-RateLimit-Remaining
+Retry-After
+```
+
+These headers allow clients to understand their current **rate-limit status** and how long they should wait before retrying.
+
+---
+
+## 📊 Monitoring Dashboard
+
+API Guardian includes a **web-based monitoring dashboard** that provides visibility into API activity.
+
+The dashboard displays:
+
+- **Total Requests**
+- **Successful Requests**
+- **Rate-Limited Requests**
+- **Recent Request Activity**
+- **API Status**
+- **Rate-Limit Information**
+
+### Dashboard Preview
+
+![API Guardian Dashboard](src/dashboard.png)
+
+### Access the Dashboard
+
+After starting the application, open:
+
+```text
+http://localhost:8000/dashboard
+```
+
+---
+
+## 🧪 Testing Rate Limiting
+
+You can send requests to the protected endpoint using the API key.
+
+### Example Request
+
 ```bash
-Testing rate limits on http://localhost:8000/api/example (20 requests, 0.01s delay)
-----------------------------------------
-Request 1: Status 200  # Successful request
-...
-Request 11: Status 429 # Rate limit exceeded
-...
+curl -H "X-API-Key: demo-key-123" http://localhost:8000/api/example
 ```
 
-## Development
+Sending multiple requests rapidly will eventually trigger the rate limiter.
 
-This project uses the uv package manager for dependency management. The dependencies and project configuration are specified in `pyproject.toml`.
+The API will then return:
 
-## Stopping the Application
+```text
+429 Too Many Requests
+```
 
-To stop the application and clean up Docker resources:
+The dashboard will also record the **rate-limited requests**.
+
+---
+
+## 🐳 Running Locally
+
+### 1. Clone the Repository
 
 ```bash
-docker compose down
+git clone https://github.com/Mridvi/API-Guardian.git
+cd API-Guardian
 ```
 
-## Contributing
+### 2. Start the Application
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Make sure **Docker Desktop** is running.
+
+```bash
+docker compose up --build
+```
+
+### 3. Open the API
+
+```text
+http://localhost:8000
+```
+
+### 4. Open the Dashboard
+
+```text
+http://localhost:8000/dashboard
+```
+
+---
+
+## 📁 Project Structure
+
+```text
+API-Guardian/
+│
+├── src/
+│   ├── main.py
+│   ├── request_rate_limiter.lua
+│   └── dashboard.png
+│
+├── dashboard/
+│   ├── index.html
+│   ├── style.css
+│   └── script.js
+│
+├── Dockerfile
+├── docker-compose.yml
+├── requirements.txt
+└── README.md
+```
+
+---
+
+## 🔮 Future Improvements
+
+- **Allow different rate limits for different API keys**
+- **Store request statistics permanently**
+- **Add an interface to create and manage API keys**
+- **Add more detailed request analytics to the dashboard**
+- **Add configurable rate-limit settings**
+
+---
+
+## 📌 Project Purpose
+
+API Guardian was built to explore and demonstrate practical **backend development and API security concepts**, including:
+
+- **FastAPI**
+- **API Authentication**
+- **Middleware**
+- **Rate Limiting**
+- **Redis**
+- **Token Bucket Algorithms**
+- **Asynchronous APIs**
+- **Docker**
+- **API Monitoring**
